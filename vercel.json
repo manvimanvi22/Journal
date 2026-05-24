@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "functions": {
+    "api/**/*.js": { "runtime": "@vercel/node@3" }
+  },
   "rewrites": [
     { "source": "/api/entries/:id", "destination": "/api/entries/[id]" },
     { "source": "/api/:path*",      "destination": "/api/:path*" },
