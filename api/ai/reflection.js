@@ -8,15 +8,25 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
   try {
-    const all    = await getAll();
-    const week   = new Date(); week.setDate(week.getDate() - 7);
-    const recent = all.filter(e => new Date(e.date) >= week);
+    const all = await getAll();
 
-    if (!recent.length) {
-      return res.json({ success: true, reflection: "No entries this week yet — start logging! 🌱", entryCount: 0 });
+    // Use last 8 days to be safe with timezone differences
+    const week = new Date();
+    week.setDate(week.getDate() - 8);
+    week.setHours(0, 0, 0, 0);
+
+    const recent = all.filter(e => {
+      try { return new Date(e.date) >= week; } catch { return false; }
+    });
+
+    // If still no entries in 8 days, use ALL entries for reflection
+    const toReflect = recent.length > 0 ? recent : all.slice(0, 10);
+
+    if (!toReflect.length) {
+      return res.json({ success: true, reflection: "No entries yet — start logging your moods and I'll reflect on your week! 🌱", entryCount: 0 });
     }
 
-    const summary = recent.map(e => {
+    const summary = toReflect.map(e => {
       const d    = new Date(e.date).toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' });
       const tags = e.tags?.length ? ` [${e.tags.join(', ')}]` : '';
       const note = e.note ? ` — "${e.note}"` : '';
@@ -75,7 +85,7 @@ module.exports = async (req, res) => {
     reflection = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!reflection) throw new Error('Empty response from Gemini');
 
-    res.json({ success: true, reflection, entryCount: recent.length, source: 'gemini' });
+    res.json({ success: true, reflection, entryCount: toReflect.length, source: 'gemini' });
 
   } catch (err) {
     const isConnRefused = err.message.includes('ECONNREFUSED') || err.message.includes('fetch');
