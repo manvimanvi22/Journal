@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Moodly — Your Daily Journal</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,400;1,500&family=Cabinet+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ── Dark mode (default) ── */
+:root {
+  --bg:           #0D0E1A;
+  --glass:        rgba(255,255,255,0.045);
+  --glass-border: rgba(255,255,255,0.09);
+  --text:         #EDE9F4;
+  --text-dim:     #8B87A8;
+  --text-faint:   #4A4768;
+  --gold:         #E8B86D;
+  --gold-dim:     rgba(232,184,109,0.18);
+  --gold-glow:    rgba(232,184,109,0.35);
+  --rose:         #E87D8B;
+  --teal:         #6DCFCE;
+  --lavender:     #A78BFA;
+  --radius:       20px;
+  --radius-sm:    12px;
+  --sidebar-w:    230px;
+}
+
+/* ── Light mode ── */
+[data-theme="light"] {
+  --bg:           #F4F1EC;
+  --glass:        rgba(255,255,255,0.75);
+  --glass-border: rgba(0,0,0,0.08);
+  --text:         #1C1A17;
+  --text-dim:     #6B6459;
+  --text-faint:   #A89F95;
+  --gold:         #A0620A;
+  --gold-dim:     rgba(160,98,10,0.12);
+  --gold-glow:    rgba(160,98,10,0.25);
+  --rose:         #C0394A;
+  --teal:         #0E7C7B;
+  --lavender:     #5B4FBE;
+}
+
+[data-theme="light"] body::before {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(180,140,255,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(255,160,140,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 60% 20%, rgba(80,200,195,0.06) 0%, transparent 50%);
+}
+[data-theme="light"] aside {
+  background: rgba(245,241,235,0.92);
+  border-right-color: rgba(0,0,0,0.07);
+}
+[data-theme="light"] .panel {
+  background: rgba(255,255,255,0.82);
+  border-color: rgba(0,0,0,0.07);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.05);
+}
+[data-theme="light"] .panel:hover { border-color: rgba(0,0,0,0.13); }
+[data-theme="light"] .streak-card {
+  background: linear-gradient(135deg,rgba(160,98,10,0.12),rgba(160,98,10,0.05));
+  border-color: rgba(160,98,10,0.2);
+}
+[data-theme="light"] .emoji-btn { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.09); }
+[data-theme="light"] .emoji-btn:hover { background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.18); }
+[data-theme="light"] .note-area,
+[data-theme="light"] .form-input { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.1); color: var(--text); }
+[data-theme="light"] .note-area:focus,
+[data-theme="light"] .form-input:focus { border-color: rgba(91,79,190,0.4); background: rgba(91,79,190,0.04); }
+[data-theme="light"] .tag-btn { border-color: rgba(0,0,0,0.1); color: var(--text-dim); }
+[data-theme="light"] .tag-btn:hover { background: rgba(0,0,0,0.05); }
+[data-theme="light"] .tag-btn.selected { background: rgba(91,79,190,0.1); border-color: rgba(91,79,190,0.3); }
+[data-theme="light"] .cal-day:hover:not(.empty) { background: rgba(0,0,0,0.05); }
+[data-theme="light"] .stat-card { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.07); }
+[data-theme="light"] .entry-item { background: rgba(0,0,0,0.025); }
+[data-theme="light"] .entry-item:hover { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.09); }
+[data-theme="light"] .nav-item:hover { background: rgba(0,0,0,0.05); border-color: rgba(0,0,0,0.07); }
+[data-theme="light"] .nav-item.active { background: rgba(160,98,10,0.1); border-color: rgba(160,98,10,0.2); }
+[data-theme="light"] .star { background: rgba(0,0,0,0.15); }
+[data-theme="light"] .profile-banner { background: linear-gradient(135deg,rgba(150,120,255,.2),rgba(80,195,190,.15),rgba(200,150,50,.15)); }
+[data-theme="light"] .confirm-box { background: rgba(245,241,235,0.98); }
+[data-theme="light"] .toast { background: rgba(28,26,23,0.92); color: var(--gold); }
+
+/* ── Smooth theme transition ── */
+*, *::before, *::after {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease !important;
+}
+/* But don't animate transforms/opacity to avoid jank */
+.emoji-btn, .save-btn, .nav-item, .panel, .entry-item {
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease, transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease, opacity 0.2s ease !important;
+}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 4px; }
+
+body {
+  font-family: 'Cabinet Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+  grid-template-rows: auto 1fr;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 10%, rgba(100,60,200,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, rgba(232,119,109,0.10) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 60% 20%, rgba(109,207,206,0.08) 0%, transparent 50%);
+  pointer-events: none; z-index: 0;
+  animation: meshDrift 18s ease-in-out infinite alternate;
+}
+@keyframes meshDrift {
+  0%   { opacity:1; transform:scale(1) translate(0,0); }
+  100% { opacity:.85; transform:scale(1.04) translate(-1%,1%); }
+}
+body::after {
+  content:''; position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  opacity:.025; pointer-events:none; z-index:0;
+}
+
+/* SIDEBAR */
+aside {
+  position: sticky; top:0; z-index:10;
+  grid-row: 1/3;
+  height: 100vh; overflow-y:auto;
+  background: rgba(10,11,22,0.7);
+  backdrop-filter: blur(24px);
+  border-right: 1px solid var(--glass-border);
+  padding: 1.75rem 1.1rem;
+  display: flex; flex-direction:column; gap:1.75rem;
+  animation: slideInLeft .5s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes slideInLeft { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
+.logo { display:flex; align-items:center; gap:10px; padding:0 .4rem; }
+.logo-icon { width:34px;height:34px; background:linear-gradient(135deg,#c084fc,#818cf8); border-radius:10px; display:flex;align-items:center;justify-content:center; font-size:1rem; box-shadow:0 4px 16px rgba(129,140,248,.4); flex-shrink:0; }
+.logo-text { font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:700; line-height:1; }
+.logo-sub  { font-size:.65rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:.06em; }
+nav { display:flex; flex-direction:column; gap:2px; }
+.nav-label { font-size:.6rem; text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); padding:.5rem .7rem .25rem; font-weight:500; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:.6rem .8rem; border-radius:var(--radius-sm);
+  font-size:.85rem; font-weight:500; color:var(--text-dim);
+  cursor:pointer; transition:all .18s;
+  border:1px solid transparent; position:relative; overflow:hidden;
+}
+.nav-item::before { content:''; position:absolute; inset:0; background:linear-gradient(90deg,var(--gold-dim),transparent); opacity:0; transition:opacity .2s; }
+.nav-item:hover { color:var(--text); border-color:var(--glass-border); background:var(--glass); }
+.nav-item.active { color:var(--gold); border-color:rgba(232,184,109,.25); background:var(--gold-dim); }
+.nav-item.active::before { opacity:1; }
+.nav-icon { font-size:1rem; width:18px; text-align:center; flex-shrink:0; }
+.nav-badge { margin-left:auto; font-size:.58rem; background:rgba(109,207,206,.15); color:var(--teal); padding:2px 6px; border-radius:20px; border:1px solid rgba(109,207,206,.25); }
+.streak-card {
+  margin-top:auto; border-radius:var(--radius); padding:1.1rem 1.2rem;
+  background:linear-gradient(135deg,rgba(232,184,109,.15),rgba(232,184,109,.05));
+  border:1px solid rgba(232,184,109,.25); position:relative; overflow:hidden;
+}
+.streak-card::before { content:'🔥'; position:absolute; right:-4px;top:-8px; font-size:3rem; opacity:.12; transform:rotate(12deg); }
+.streak-label { font-size:.68rem; color:var(--gold); text-transform:uppercase; letter-spacing:.08em; font-weight:500; margin-bottom:2px; }
+.streak-num { font-family:'Playfair Display',serif; font-size:2.4rem; font-weight:700; color:var(--gold); line-height:1; }
+.streak-sub { font-size:.72rem; color:var(--text-dim); margin-top:2px; }
+
+/* HEADER */
+header {
+  position:relative; z-index:5;
+  grid-column:2; padding:1.75rem 2.25rem 0;
+  display:flex; align-items:center; justify-content:space-between;
+  animation: fadeDown .5s .1s ease both;
+}
+@keyframes fadeDown { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
+.greeting { font-family:'Playfair Display',serif; font-size:1.55rem; font-weight:500; line-height:1.2; }
+.greeting em { font-style:italic; color:var(--gold); }
+.greeting-sub { font-size:.8rem; color:var(--text-dim); margin-top:2px; }
+.date-pill { background:var(--glass); border:1px solid var(--glass-border); border-radius:30px; padding:.45rem 1.1rem; font-size:.78rem; color:var(--text-dim); backdrop-filter:blur(10px); }
+.theme-toggle-btn { width:36px;height:36px; border-radius:50%; background:var(--glass); border:1px solid var(--glass-border); cursor:pointer; font-size:1rem; display:flex;align-items:center;justify-content:center; transition:transform 0.3s ease, box-shadow 0.2s !important; backdrop-filter:blur(10px); }
+.theme-toggle-btn:hover { transform:rotate(20deg) scale(1.1); box-shadow:0 4px 16px rgba(232,184,109,0.25); }
+
+/* MAIN */
+main { position:relative; z-index:5; grid-column:2; padding:1.5rem 2.25rem 3rem; }
+
+/* PAGES */
+.page { display:none; }
+.page.active { display:block; animation: riseUp .4s cubic-bezier(.16,1,.3,1) both; }
+@keyframes riseUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+
+/* LOG PAGE */
+.log-grid { display:grid; grid-template-columns:1fr 320px; gap:1.25rem; align-items:start; }
+
+/* DASHBOARD PAGE */
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+.dash-grid .wide { grid-column:1/-1; }
+
+/* AI PAGE */
+.ai-grid { display:grid; grid-template-columns:1fr; gap:1.25rem; max-width:720px; }
+
+/* PANEL */
+.panel {
+  background:var(--glass); border:1px solid var(--glass-border);
+  border-radius:var(--radius); padding:1.5rem;
+  backdrop-filter:blur(20px); transition:border-color .2s;
+}
+.panel:hover { border-color:rgba(255,255,255,.14); }
+.panel-title {
+  font-family:'Playfair Display',serif; font-size:1.05rem; font-weight:500;
+  color:var(--text); margin-bottom:1.25rem;
+  display:flex; align-items:center; gap:8px;
+}
+.panel-title .dot { width:6px;height:6px; border-radius:50%; background:var(--gold); box-shadow:0 0 6px var(--gold-glow); flex-shrink:0; }
+.mood-q { font-size:.82rem; color:var(--text-dim); font-style:italic; margin-bottom:1.25rem; font-family:'Playfair Display',serif; line-height:1.6; }
+
+/* EMOJI GRID */
+.emoji-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:1.5rem; }
+.emoji-btn {
+  aspect-ratio:1; border:1px solid var(--glass-border); border-radius:14px;
+  background:rgba(255,255,255,.03); font-size:1.55rem; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  transition:all .22s cubic-bezier(.34,1.56,.64,1); position:relative; padding:.45rem .2rem; overflow:hidden;
+}
+.emoji-btn:hover { transform:translateY(-3px) scale(1.06); border-color:rgba(255,255,255,.2); background:rgba(255,255,255,.07); }
+.emoji-btn .mood-label { font-size:.52rem; font-weight:500; color:var(--text-faint); text-transform:uppercase; letter-spacing:.05em; line-height:1; }
+.emoji-btn.selected { border-color:var(--gold); background:var(--gold-dim); transform:translateY(-3px) scale(1.1); box-shadow:0 8px 24px rgba(232,184,109,.2),0 0 0 3px rgba(232,184,109,.12); }
+.emoji-btn.selected .mood-label { color:var(--gold); }
+.emoji-btn.selected::after { content:'✓'; position:absolute; top:-1px;right:-1px; width:16px;height:16px; background:var(--gold); color:#0D0E1A; font-size:8px; border-radius:0 14px 0 8px; display:flex; align-items:center; justify-content:center; font-weight:700; }
+
+.divider { height:1px; background:var(--glass-border); margin:1.25rem 0; }
+.sub-label { font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--text-faint); font-weight:500; margin-bottom:.65rem; }
+
+/* TAGS */
+.tags-row { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:1.25rem; }
+.tag-btn { padding:5px 13px; border-radius:20px; font-size:.75rem; border:1px solid var(--glass-border); background:transparent; cursor:pointer; transition:all .15s; font-family:'Cabinet Grotesk',sans-serif; color:var(--text-dim); font-weight:500; }
+.tag-btn:hover { border-color:rgba(255,255,255,.2); color:var(--text); background:var(--glass); }
+.tag-btn.selected { border-color:var(--lavender); background:rgba(167,139,250,.12); color:var(--lavender); }
+
+/* TEXTAREA */
+.note-wrap { position:relative; margin-bottom:1.25rem; }
+.note-area { width:100%; border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:.9rem 1rem; font-family:'Playfair Display',serif; font-size:.88rem; color:var(--text); background:rgba(255,255,255,.03); resize:none; height:100px; outline:none; transition:border-color .2s,background .2s; line-height:1.75; caret-color:var(--gold); }
+.note-area:focus { border-color:rgba(232,184,109,.45); background:rgba(232,184,109,.04); }
+.note-area::placeholder { color:var(--text-faint); font-style:italic; }
+.char-count { position:absolute; bottom:8px;right:10px; font-size:.65rem; color:var(--text-faint); pointer-events:none; }
+
+/* SAVE BTN */
+.save-btn { width:100%; padding:.85rem; background:linear-gradient(135deg,#c17b3a,#e8a84e); color:#0D0E1A; border:none; border-radius:var(--radius-sm); font-family:'Cabinet Grotesk',sans-serif; font-size:.88rem; font-weight:700; cursor:pointer; transition:all .2s; position:relative; overflow:hidden; }
+.save-btn:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 24px rgba(232,168,78,.35); }
+.save-btn:disabled { background:rgba(255,255,255,.06); color:var(--text-faint); cursor:not-allowed; }
+
+/* CALENDAR */
+.calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.cal-day-name { font-size:.6rem; font-weight:700; color:var(--text-faint); text-align:center; padding-bottom:8px; text-transform:uppercase; letter-spacing:.06em; }
+.cal-day { aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:.72rem; color:var(--text-faint); cursor:pointer; transition:all .15s; border:1px solid transparent; }
+.cal-day:hover:not(.empty) { background:var(--glass); color:var(--text); }
+.cal-day.has-entry { font-size:1rem; }
+.cal-day.today { background:var(--gold-dim); color:var(--gold); border-color:rgba(232,184,109,.4); font-weight:700; box-shadow:0 0 12px rgba(232,184,109,.15); }
+.cal-day.empty { pointer-events:none; }
+
+/* STATS */
+.stats-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.stat-card { background:rgba(255,255,255,.03); border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:.9rem 1rem; transition:border-color .15s; }
+.stat-card:hover { border-color:rgba(255,255,255,.15); }
+.stat-label { font-size:.65rem; color:var(--text-faint); font-weight:500; text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+.stat-value { font-family:'Playfair Display',serif; font-size:1.8rem; font-weight:700; color:var(--text); line-height:1; }
+.stat-sub { font-size:.68rem; color:var(--text-dim); margin-top:3px; }
+.mood-bar-row { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.mood-bar-label { font-size:1rem; }
+.mood-bar-track { flex:1; height:5px; background:rgba(255,255,255,.07); border-radius:3px; overflow:hidden; }
+.mood-bar-fill { height:100%; border-radius:3px; transition:width .6s cubic-bezier(.16,1,.3,1); }
+.mood-bar-count { font-size:.7rem; color:var(--text-faint); min-width:16px; text-align:right; }
+
+/* CHART CONTAINER */
+.chart-wrap { position:relative; height:200px; }
+.chart-wrap-tall { position:relative; height:240px; }
+
+/* ENTRIES LIST */
+.entry-list { display:flex; flex-direction:column; gap:6px; }
+.entry-item { display:flex; align-items:flex-start; gap:10px; padding:.85rem .9rem; background:rgba(255,255,255,.025); border-radius:var(--radius-sm); border:1px solid transparent; transition:all .18s; cursor:pointer; position:relative; overflow:hidden; }
+.entry-item::before { content:''; position:absolute; left:0;top:0;bottom:0; width:2px; background:linear-gradient(to bottom,var(--gold),transparent); opacity:0; transition:opacity .2s; }
+.entry-item:hover { background:var(--glass); border-color:var(--glass-border); }
+.entry-item:hover::before { opacity:1; }
+.entry-emoji { font-size:1.4rem; flex-shrink:0; line-height:1; margin-top:1px; }
+.entry-meta { flex:1; min-width:0; }
+.entry-date { font-size:.67rem; color:var(--text-faint); margin-bottom:2px; text-transform:uppercase; letter-spacing:.04em; }
+.entry-mood-name { font-size:.75rem; color:var(--text-dim); font-weight:500; margin-bottom:3px; }
+.entry-note { font-size:.8rem; color:var(--text); line-height:1.4; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'Playfair Display',serif; font-style:italic; }
+.entry-tags { display:flex; gap:4px; margin-top:5px; flex-wrap:wrap; }
+.entry-tag { font-size:.62rem; padding:2px 7px; background:rgba(167,139,250,.1); border:1px solid rgba(167,139,250,.2); border-radius:10px; color:var(--lavender); font-weight:500; }
+.empty-state { text-align:center; padding:2rem 1rem; color:var(--text-faint); font-size:.82rem; font-style:italic; font-family:'Playfair Display',serif; line-height:1.6; }
+.empty-state .empty-icon { font-size:1.8rem; margin-bottom:8px; display:block; opacity:.5; }
+
+/* RIGHT COL */
+.right-col { display:flex; flex-direction:column; gap:1.25rem; }
+
+/* AI REFLECTION */
+.ai-setup { background:rgba(167,139,250,.08); border:1px solid rgba(167,139,250,.2); border-radius:var(--radius-sm); padding:1rem 1.1rem; margin-bottom:1.25rem; }
+.ai-setup p { font-size:.82rem; color:var(--text-dim); line-height:1.6; margin-bottom:.75rem; }
+.api-key-row { display:flex; gap:8px; }
+.api-key-input { flex:1; background:rgba(255,255,255,.05); border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:.6rem .9rem; font-family:'Cabinet Grotesk',sans-serif; font-size:.82rem; color:var(--text); outline:none; transition:border-color .2s; }
+.api-key-input:focus { border-color:var(--lavender); }
+.api-key-input::placeholder { color:var(--text-faint); }
+.save-key-btn { padding:.6rem 1rem; background:rgba(167,139,250,.2); border:1px solid rgba(167,139,250,.3); border-radius:var(--radius-sm); color:var(--lavender); font-family:'Cabinet Grotesk',sans-serif; font-size:.8rem; font-weight:500; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.save-key-btn:hover { background:rgba(167,139,250,.3); }
+
+.key-status { display:flex; align-items:center; justify-content:space-between; background:rgba(109,207,206,.07); border:1px solid rgba(109,207,206,.2); border-radius:var(--radius-sm); padding:.65rem 1rem; margin-bottom:1.25rem; }
+.key-status-left { display:flex; align-items:center; gap:8px; }
+.key-dot { width:7px;height:7px; border-radius:50%; background:var(--teal); box-shadow:0 0 6px rgba(109,207,206,.6); flex-shrink:0; }
+.key-label { font-size:.78rem; color:var(--teal); font-weight:500; }
+.key-preview { font-size:.72rem; color:var(--text-faint); font-family:monospace; }
+.change-key-btn { font-size:.72rem; padding:4px 12px; border-radius:20px; border:1px solid rgba(255,255,255,.12); background:transparent; color:var(--text-dim); cursor:pointer; transition:all .15s; font-family:'Cabinet Grotesk',sans-serif; font-weight:500; }
+.change-key-btn:hover { border-color:rgba(255,255,255,.25); color:var(--text); background:var(--glass); }
+
+.reflection-box { background:rgba(255,255,255,.03); border:1px solid var(--glass-border); border-radius:var(--radius-sm); padding:1.25rem; min-height:100px; font-family:'Playfair Display',serif; font-size:.92rem; line-height:1.85; color:var(--text); position:relative; }
+.reflection-box.loading { display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-style:italic; }
+.reflection-placeholder { color:var(--text-faint); font-style:italic; text-align:center; padding:1rem 0; }
+
+.generate-btn { width:100%; padding:.85rem; background:linear-gradient(135deg,rgba(167,139,250,.3),rgba(129,140,248,.3)); border:1px solid rgba(167,139,250,.4); color:var(--lavender); border-radius:var(--radius-sm); font-family:'Cabinet Grotesk',sans-serif; font-size:.88rem; font-weight:700; cursor:pointer; transition:all .2s; margin-top:1rem; }
+.generate-btn:hover:not(:disabled) { background:linear-gradient(135deg,rgba(167,139,250,.4),rgba(129,140,248,.4)); transform:translateY(-2px); box-shadow:0 8px 24px rgba(167,139,250,.2); }
+.generate-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+
+.insight-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:1rem; }
+.insight-chip { font-size:.72rem; padding:4px 12px; border-radius:20px; font-weight:500; }
+.chip-teal { background:rgba(109,207,206,.1); border:1px solid rgba(109,207,206,.25); color:var(--teal); }
+.chip-rose { background:rgba(232,125,139,.1); border:1px solid rgba(232,125,139,.25); color:var(--rose); }
+.chip-gold { background:var(--gold-dim); border:1px solid rgba(232,184,109,.25); color:var(--gold); }
+
+/* TOAST */
+.toast { position:fixed; bottom:2rem; left:calc(var(--sidebar-w) + 50%); transform:translateX(-50%) translateY(80px); background:rgba(20,22,40,.95); border:1px solid rgba(232,184,109,.3); color:var(--gold); padding:.75rem 1.5rem; border-radius:30px; font-size:.82rem; font-weight:500; backdrop-filter:blur(20px); transition:transform .4s cubic-bezier(.34,1.56,.64,1),opacity .3s; pointer-events:none; z-index:200; box-shadow:0 8px 32px rgba(0,0,0,.4); opacity:0; }
+.toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+
+/* STARS */
+.stars { position:fixed; top:0;left:0; width:100%;height:100%; pointer-events:none; z-index:1; }
+.star { position:absolute; width:2px;height:2px; background:white; border-radius:50%; animation:twinkle var(--dur,3s) ease-in-out infinite; animation-delay:var(--delay,0s); }
+@keyframes twinkle { 0%,100%{opacity:.1;transform:scale(1)} 50%{opacity:.7;transform:scale(1.5)} }
+
+@media (max-width:960px) {
+  body { grid-template-columns:1fr; }
+  aside { display:none; }
+  header, main { grid-column:1; }
+  .log-grid, .dash-grid { grid-template-columns:1fr; }
+  .dash-grid .wide { grid-column:1; }
+  .toast { left:50%; }
+}
+/* ── SETTINGS ── */
+.settings-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; align-items:start; }
+.settings-grid .settings-profile-card { grid-column:1/-1; }
+.settings-grid .settings-app-info { grid-column:1/-1; }
+
+.settings-profile-card { padding:0; overflow:hidden; }
+.profile-banner { height:80px; background:linear-gradient(135deg,rgba(167,139,250,.35),rgba(109,207,206,.2),rgba(232,184,109,.2)); position:relative; }
+.profile-banner::after { content:''; position:absolute; inset:0; background:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 80' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='20' cy='20' r='40' fill='rgba(167,139,250,0.15)'/%3E%3Ccircle cx='180' cy='60' r='50' fill='rgba(109,207,206,0.1)'/%3E%3C/svg%3E"); }
+.profile-body { padding:0 1.5rem 1.5rem; }
+.avatar-wrap { position:relative; display:inline-block; margin-top:-36px; margin-bottom:.75rem; }
+.avatar { width:72px;height:72px; border-radius:50%; background:linear-gradient(135deg,rgba(167,139,250,.4),rgba(109,207,206,.3)); border:3px solid var(--bg); display:flex;align-items:center;justify-content:center; font-family:'Playfair Display',serif; font-size:1.6rem; color:var(--lavender); overflow:hidden; position:relative; }
+.avatar img { width:100%;height:100%;object-fit:cover;position:absolute;inset:0; }
+.avatar-edit-btn { position:absolute; bottom:0;right:0; width:24px;height:24px; background:var(--gold); border-radius:50%; display:flex;align-items:center;justify-content:center; cursor:pointer; transition:transform .2s; border:2px solid var(--bg); }
+.avatar-edit-btn:hover { transform:scale(1.15); }
+.avatar-edit-btn i { font-size:.7rem; color:#0D0E1A; }
+.profile-name-wrap { margin-bottom:1rem; }
+.profile-display-name { font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:700; color:var(--text); line-height:1.2; }
+.profile-handle { font-size:.78rem; color:var(--text-dim); margin-top:2px; }
+.profile-stats-row { display:flex; align-items:center; gap:1.25rem; }
+.profile-stat { text-align:center; }
+.profile-stat-val { font-family:'Playfair Display',serif; font-size:1.3rem; font-weight:700; color:var(--text); line-height:1; }
+.profile-stat-label { font-size:.65rem; color:var(--text-faint); text-transform:uppercase; letter-spacing:.06em; margin-top:2px; }
+.profile-stat-divider { width:1px;height:28px; background:var(--glass-border); }
+
+/* Form */
+.settings-form { display:flex;flex-direction:column;gap:.9rem; }
+.form-row { display:grid;grid-template-columns:1fr 1fr;gap:.75rem; }
+.form-group { display:flex;flex-direction:column;gap:.35rem; }
+.form-label { font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:var(--text-faint);font-weight:500; }
+.form-input { background:rgba(255,255,255,.04);border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:.65rem .9rem;font-family:'Cabinet Grotesk',sans-serif;font-size:.85rem;color:var(--text);outline:none;transition:border-color .2s,background .2s;width:100%; }
+.form-input:focus { border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.05); }
+.form-input::placeholder { color:var(--text-faint); }
+.form-textarea { resize:vertical;min-height:72px;line-height:1.6; }
+.form-hint { font-size:.65rem;color:var(--text-faint);margin-top:-2px; }
+.input-prefix-wrap { position:relative; }
+.input-prefix { position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text-faint);font-size:.85rem;pointer-events:none; }
+.form-input.prefixed { padding-left:1.9rem; }
+.settings-save-btn { padding:.75rem;background:linear-gradient(135deg,rgba(167,139,250,.3),rgba(129,140,248,.25));border:1px solid rgba(167,139,250,.35);border-radius:var(--radius-sm);color:var(--lavender);font-family:'Cabinet Grotesk',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;margin-top:.25rem; }
+.settings-save-btn:hover { background:linear-gradient(135deg,rgba(167,139,250,.45),rgba(129,140,248,.4));transform:translateY(-1px);box-shadow:0 6px 20px rgba(167,139,250,.2); }
+
+/* Toggles */
+.settings-section-label { font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);font-weight:500;margin-bottom:.65rem;margin-top:.25rem; }
+.settings-divider { height:1px;background:var(--glass-border);margin:1rem 0; }
+.toggle-row { display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.5rem 0; }
+.toggle-title { font-size:.85rem;font-weight:500;color:var(--text);margin-bottom:2px; }
+.toggle-sub { font-size:.72rem;color:var(--text-dim); }
+.toggle-switch { position:relative;width:38px;height:22px;flex-shrink:0;cursor:pointer; }
+.toggle-switch input { opacity:0;width:0;height:0;position:absolute; }
+.toggle-knob { position:absolute;inset:0;background:rgba(255,255,255,.12);border-radius:11px;transition:background .2s; }
+.toggle-knob::after { content:'';position:absolute;width:16px;height:16px;background:white;border-radius:50%;top:3px;left:3px;transition:transform .2s;box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.toggle-switch input:checked + .toggle-knob { background:var(--lavender); }
+.toggle-switch input:checked + .toggle-knob::after { transform:translateX(16px); }
+
+/* Data actions */
+.data-action-row { display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.35rem 0; }
+.data-btn { display:flex;align-items:center;gap:6px;padding:.55rem 1rem;border-radius:var(--radius-sm);font-family:'Cabinet Grotesk',sans-serif;font-size:.78rem;font-weight:500;cursor:pointer;transition:all .18s;white-space:nowrap;border:1px solid; }
+.data-btn-teal { background:rgba(109,207,206,.1);border-color:rgba(109,207,206,.25);color:var(--teal); }
+.data-btn-teal:hover { background:rgba(109,207,206,.18);transform:translateY(-1px); }
+.data-btn-rose { background:rgba(232,125,139,.08);border-color:rgba(232,125,139,.2);color:var(--rose); }
+.data-btn-rose:hover { background:rgba(232,125,139,.16);transform:translateY(-1px); }
+
+/* App info card */
+.settings-app-info { text-align:center;padding:1.25rem; }
+.app-info-logo { font-size:1.8rem;margin-bottom:.35rem; }
+.app-info-name { font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--text); }
+.app-info-version { font-size:.72rem;color:var(--text-dim);margin-top:2px; }
+.app-info-line { font-size:.68rem;color:var(--text-faint);margin-top:4px; }
+
+/* Confirm overlay */
+.confirm-overlay { position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px); }
+.confirm-box { background:rgba(18,20,42,.95);border:1px solid var(--glass-border);border-radius:var(--radius);padding:1.75rem;max-width:340px;width:90%;text-align:center; }
+.confirm-title { font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:.5rem; }
+.confirm-sub { font-size:.82rem;color:var(--text-dim);line-height:1.6;margin-bottom:1.25rem; }
+.confirm-btns { display:flex;gap:.75rem; }
+.confirm-btns button { flex:1;padding:.7rem;border-radius:var(--radius-sm);font-family:'Cabinet Grotesk',sans-serif;font-size:.85rem;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid; }
+.confirm-cancel { background:transparent;border-color:var(--glass-border);color:var(--text-dim); }
+.confirm-cancel:hover { background:var(--glass); }
+.confirm-delete { background:rgba(232,125,139,.15);border-color:rgba(232,125,139,.3);color:var(--rose); }
+.confirm-delete:hover { background:rgba(232,125,139,.25); }
+
+@media (max-width:960px) { .settings-grid { grid-template-columns:1fr; } .settings-grid .settings-profile-card,.settings-grid .settings-app-info { grid-column:1; } .form-row { grid-template-columns:1fr; } }
+
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars" aria-hidden="true"></div>
+
+<!-- SIDEBAR -->
+<aside>
+  <div class="logo">
+    <div class="logo-icon" id="sidebar-avatar-wrap">
+      <div id="sidebar-avatar" style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#c084fc,#818cf8);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:white;overflow:hidden;background-size:cover;background-position:center;" id="sidebar-avatar">🌙</div>
+    </div>
+    <div>
+      <div class="logo-text" id="sidebar-name">Moodly</div>
+      <div class="logo-sub" id="sidebar-sub">your journal</div>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-label">Menu</div>
+    <div class="nav-item active" onclick="gotoPage('log',this)"><span class="nav-icon">✦</span> Today's Log</div>
+    <div class="nav-item" onclick="gotoPage('dashboard',this)"><span class="nav-icon">◈</span> Dashboard</div>
+    <div class="nav-item" onclick="gotoPage('history',this)"><span class="nav-icon">◎</span> History</div>
+    <div class="nav-item" onclick="gotoPage('ai',this)"><span class="nav-icon">◆</span> AI Insights</div>
+    <div class="nav-item" onclick="gotoPage('settings',this)"><span class="nav-icon">⊕</span> Settings</div>
+  </nav>
+  <div class="streak-card">
+    <div class="streak-label">🔥 Streak</div>
+    <div class="streak-num" id="streak-num">0</div>
+    <div class="streak-sub">days in a row</div>
+  </div>
+</aside>
+
+<!-- HEADER -->
+<header>
+  <div>
+    <div class="greeting">Good <em id="time-of-day">evening</em>, friend ✦</div>
+    <div class="greeting-sub" id="today-date-sub"></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <button class="theme-toggle-btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">
+      <span id="theme-icon">☀️</span>
+    </button>
+    <div class="date-pill" id="today-date"></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ══════════ LOG PAGE ══════════ -->
+  <div class="page active" id="page-log">
+    <div class="log-grid">
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> How are you feeling?</div>
+        <p class="mood-q">Choose the mood that resonates — this is your private space.</p>
+        <div class="emoji-grid" id="emoji-grid"></div>
+        <div class="divider"></div>
+        <div class="sub-label">What's going on?</div>
+        <div class="tags-row" id="tags-row"></div>
+        <div class="sub-label">Write a note</div>
+        <div class="note-wrap">
+          <textarea class="note-area" id="note-input" placeholder="A few words about your day…" maxlength="500" oninput="document.getElementById('char-count').textContent=this.value.length+' / 500'"></textarea>
+          <div class="char-count" id="char-count">0 / 500</div>
+        </div>
+        <button class="save-btn" id="save-btn" onclick="saveEntry()" disabled>Pick a mood to continue</button>
+      </div>
+      <div class="right-col">
+        <div class="panel">
+          <div class="panel-title"><span class="dot"></span> <span id="cal-month-title"></span></div>
+          <div class="calendar-grid" id="calendar"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="dot"></span> This month</div>
+          <div class="stats-row">
+            <div class="stat-card"><div class="stat-label">Entries</div><div class="stat-value" id="stat-total">0</div><div class="stat-sub">logged</div></div>
+            <div class="stat-card"><div class="stat-label">Top mood</div><div class="stat-value" id="stat-top-mood" style="font-size:1.6rem">—</div><div class="stat-sub" id="stat-top-label">none yet</div></div>
+          </div>
+          <div style="margin-top:.75rem" id="mood-bars"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title"><span class="dot"></span> Recent entries</div>
+          <div class="entry-list" id="entry-list-log">
+            <div class="empty-state"><span class="empty-icon">🌱</span>Start logging to see your entries here.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ DASHBOARD PAGE ══════════ -->
+  <div class="page" id="page-dashboard">
+    <div class="dash-grid">
+      <!-- Line chart: mood over time -->
+      <div class="panel wide">
+        <div class="panel-title"><span class="dot"></span> Mood over the last 14 days</div>
+        <div class="chart-wrap-tall"><canvas id="chart-line"></canvas></div>
+      </div>
+      <!-- Doughnut: mood distribution -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> Mood distribution</div>
+        <div class="chart-wrap"><canvas id="chart-doughnut"></canvas></div>
+      </div>
+      <!-- Bar: entries by day of week -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> Most active days</div>
+        <div class="chart-wrap"><canvas id="chart-bar"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ HISTORY PAGE ══════════ -->
+  <div class="page" id="page-history">
+    <div class="panel" style="max-width:680px">
+      <div class="panel-title"><span class="dot"></span> All entries</div>
+      <div class="entry-list" id="entry-list-history">
+        <div class="empty-state"><span class="empty-icon">📖</span>No entries yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ AI PAGE ══════════ -->
+  <div class="page" id="page-ai">
+    <div class="ai-grid">
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> Weekly AI Reflection</div>
+        <p class="mood-q">Claude reads your week's mood entries and writes a personal, thoughtful reflection just for you.</p>
+
+        <!-- Ollama status bar -->
+        <div class="key-status" id="ollama-status">
+          <div class="key-status-left">
+            <span class="key-dot"></span>
+            <span class="key-label">Ollama — runs on your Mac</span>
+          </div>
+          <select id="model-select" style="background:transparent;border:1px solid var(--glass-border);border-radius:8px;color:var(--text-dim);font-size:0.75rem;padding:3px 8px;cursor:pointer;outline:none;">
+            <option value="llama3.2">llama3.2</option>
+            <option value="llama3.1">llama3.1</option>
+            <option value="mistral">mistral</option>
+            <option value="gemma2">gemma2</option>
+            <option value="phi3">phi3</option>
+          </select>
+        </div>
+        <!-- Setup instructions (shown if Ollama not running) -->
+        <div class="ai-setup" id="ai-setup" style="display:none">
+          <p>Ollama isn't running. Start it in your terminal:</p>
+          <code style="display:block;background:rgba(255,255,255,0.05);padding:0.5rem 0.75rem;border-radius:8px;font-size:0.8rem;color:var(--teal);margin-top:0.5rem;">ollama serve</code>
+          <p style="margin-top:0.5rem">And make sure you have the model pulled:</p>
+          <code style="display:block;background:rgba(255,255,255,0.05);padding:0.5rem 0.75rem;border-radius:8px;font-size:0.8rem;color:var(--teal);margin-top:0.5rem;">ollama pull llama3.2</code>
+        </div>
+
+        <div class="reflection-box" id="reflection-box">
+          <div class="reflection-placeholder">Your AI reflection will appear here ✦</div>
+        </div>
+
+        <div class="insight-chips" id="insight-chips"></div>
+
+        <button class="generate-btn" id="generate-btn" onclick="generateReflection()">
+          ✦ Generate this week's reflection
+        </button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> This week at a glance</div>
+        <div id="week-summary-list" class="entry-list">
+          <div class="empty-state"><span class="empty-icon">🗓</span>No entries this week yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS PAGE ══════════ -->
+  <div class="page" id="page-settings">
+    <div class="settings-grid">
+
+      <!-- Profile card -->
+      <div class="panel settings-profile-card">
+        <div class="profile-banner"></div>
+        <div class="profile-body">
+          <div class="avatar-wrap">
+            <div class="avatar" id="avatar-display">
+              <span id="avatar-initials">?</span>
+              <img id="avatar-img" src="" alt="Profile photo" style="display:none"/>
+            </div>
+            <label class="avatar-edit-btn" title="Change photo">
+              <i class="ti ti-camera" aria-hidden="true"></i>
+              <input type="file" id="photo-upload" accept="image/*" onchange="handlePhotoUpload(event)" style="display:none"/>
+            </label>
+          </div>
+          <div class="profile-name-wrap">
+            <div class="profile-display-name" id="profile-display-name">Your Name</div>
+            <div class="profile-handle" id="profile-handle">@handle · Moodly member</div>
+          </div>
+          <div class="profile-stats-row">
+            <div class="profile-stat">
+              <div class="profile-stat-val" id="ps-total">0</div>
+              <div class="profile-stat-label">entries</div>
+            </div>
+            <div class="profile-stat-divider"></div>
+            <div class="profile-stat">
+              <div class="profile-stat-val" id="ps-streak">0</div>
+              <div class="profile-stat-label">day streak</div>
+            </div>
+            <div class="profile-stat-divider"></div>
+            <div class="profile-stat">
+              <div class="profile-stat-val" id="ps-since">—</div>
+              <div class="profile-stat-label">journaling since</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal info -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> Personal info</div>
+        <div class="settings-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">First name</label>
+              <input class="form-input" id="s-firstname" type="text" placeholder="Your first name" oninput="liveUpdateProfile()"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Last name</label>
+              <input class="form-input" id="s-lastname" type="text" placeholder="Your last name" oninput="liveUpdateProfile()"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">@</span>
+              <input class="form-input prefixed" id="s-username" type="text" placeholder="yourhandle" oninput="liveUpdateProfile()"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bio</label>
+            <textarea class="form-input form-textarea" id="s-bio" placeholder="A little about yourself…" maxlength="120" rows="3"></textarea>
+            <div class="form-hint">120 characters max</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Location</label>
+            <input class="form-input" id="s-location" type="text" placeholder="City, Country"/>
+          </div>
+          <button class="settings-save-btn" onclick="saveProfile()">Save changes</button>
+        </div>
+      </div>
+
+      <!-- Preferences -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> Preferences</div>
+        <div class="settings-section-label">Journal reminders</div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Daily reminder</div>
+            <div class="toggle-sub">Get a nudge to log your mood each day</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="pref-reminder" onchange="savePrefs()"/>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Weekly AI reflection</div>
+            <div class="toggle-sub">Auto-generate every Monday morning</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="pref-weekly" onchange="savePrefs()"/>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+
+        <div class="settings-divider"></div>
+        <div class="settings-section-label">Display</div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Light mode</div>
+            <div class="toggle-sub">Switch between dark and light theme</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="pref-lightmode" onchange="toggleThemeFromSettings()"/>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Show mood scores</div>
+            <div class="toggle-sub">Display 1–5 score alongside emoji</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="pref-scores" checked onchange="savePrefs()"/>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-title">Compact entry list</div>
+            <div class="toggle-sub">Smaller cards in history view</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="pref-compact" onchange="savePrefs()"/>
+            <span class="toggle-knob"></span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Data & privacy -->
+      <div class="panel">
+        <div class="panel-title"><span class="dot"></span> Data & privacy</div>
+        <div class="data-action-row">
+          <div>
+            <div class="toggle-title">Export journal</div>
+            <div class="toggle-sub">Download all entries as a CSV file</div>
+          </div>
+          <button class="data-btn data-btn-teal" onclick="exportCSV()">
+            <i class="ti ti-download" aria-hidden="true"></i> Export CSV
+          </button>
+        </div>
+        <div class="settings-divider"></div>
+        <div class="data-action-row">
+          <div>
+            <div class="toggle-title" style="color:var(--rose)">Clear all data</div>
+            <div class="toggle-sub">Permanently delete all journal entries</div>
+          </div>
+          <button class="data-btn data-btn-rose" onclick="confirmClearData()">
+            <i class="ti ti-trash" aria-hidden="true"></i> Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- App info -->
+      <div class="panel settings-app-info">
+        <div class="app-info-logo">🌙</div>
+        <div class="app-info-name">Moodly</div>
+        <div class="app-info-version">Version 1.0 · Week 3 build</div>
+        <div class="app-info-line">Built with Node.js · Express · Chart.js · Ollama</div>
+      </div>
+
+    </div>
+  </div>
+
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';  // empty = same origin (localhost:3000)
+
+const MOODS = [
+  {emoji:'😄',label:'Amazing',score:5,color:'#6DCFCE'},
+  {emoji:'🙂',label:'Good',   score:4,color:'#A3E4A0'},
+  {emoji:'😐',label:'Okay',   score:3,color:'#E8B86D'},
+  {emoji:'😔',label:'Low',    score:2,color:'#A78BFA'},
+  {emoji:'😢',label:'Sad',    score:1,color:'#818CF8'},
+  {emoji:'😡',label:'Angry',  score:1,color:'#E87D8B'},
+  {emoji:'😰',label:'Anxious',score:2,color:'#FCA5A5'},
+  {emoji:'😴',label:'Tired',  score:2,color:'#93C5FD'},
+  {emoji:'🤩',label:'Excited',score:5,color:'#FCD34D'},
+  {emoji:'🥰',label:'Loved',  score:5,color:'#F9A8D4'},
+];
+const TAGS = ['work','family','friends','health','exercise','creative','travel','food','nature','rest'];
+
+let entries = [];
+let selectedMood = null;
+let selectedTags = [];
+let charts = {};
+
+// ── Boot ──────────────────────────────────────────────
+async function init() {
+  loadTheme();
+  spawnStars();
+  setGreeting();
+  renderEmojiGrid();
+  renderTagsRow();
+  await loadEntries();
+  loadProfileOnBoot();
+}
+
+function loadProfileOnBoot() {
+  const p = JSON.parse(localStorage.getItem('moodly_profile') || '{}');
+  const photo = localStorage.getItem('moodly_photo') || '';
+
+  // Update sidebar name
+  const first = p.firstname || '';
+  const last  = p.lastname  || '';
+  const full  = [first, last].filter(Boolean).join(' ');
+  if (full) {
+    document.getElementById('sidebar-name').textContent = full;
+    document.getElementById('sidebar-sub').textContent  = p.username ? '@' + p.username : 'your journal';
+  }
+
+  // Update sidebar avatar
+  const avatarEl = document.getElementById('sidebar-avatar');
+  if (photo && avatarEl) {
+    avatarEl.style.backgroundImage = `url(${photo})`;
+    avatarEl.textContent = '';
+  } else if (full && avatarEl) {
+    const initials = [(first[0]||''), (last[0]||'')].filter(Boolean).join('').toUpperCase();
+    avatarEl.textContent = initials || '🌙';
+    avatarEl.style.backgroundImage = '';
+  }
+
+  // Update header greeting — always show time of day, add name if set
+  const tod = getTimeOfDay();
+  if (first) {
+    document.querySelector('.greeting').innerHTML = `Good <em>${tod}</em>, <em>${first}</em> ✦`;
+  } else {
+    document.querySelector('.greeting').innerHTML = `Good <em>${tod}</em>, friend ✦`;
+  }
+}
+
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  return h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening';
+}
+
+function setGreeting() {
+  const h = new Date().getHours();
+  document.getElementById('time-of-day').textContent = getTimeOfDay();
+  const d = new Date();
+  document.getElementById('today-date').textContent = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  document.getElementById('today-date-sub').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  document.getElementById('cal-month-title').textContent = d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+}
+
+// ── API calls ─────────────────────────────────────────
+async function loadEntries() {
+  try {
+    const res  = await fetch(`${API}/api/entries`);
+    const data = await res.json();
+    if (data.success) { entries = data.entries; refreshAll(); }
+  } catch(e) { console.warn('Could not load entries:', e.message); }
+}
+
+async function saveEntry() {
+  if (!selectedMood) return;
+  const note = document.getElementById('note-input').value.trim();
+  const btn  = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const res  = await fetch(`${API}/api/entries`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ mood:selectedMood, tags:[...selectedTags], note }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.error);
+    entries.unshift(data.entry);
+    selectedMood = null; selectedTags = [];
+    renderEmojiGrid(); renderTagsRow();
+    document.getElementById('note-input').value = '';
+    document.getElementById('char-count').textContent = '0 / 500';
+    btn.disabled = true; btn.textContent = 'Pick a mood to continue';
+    refreshAll();
+    showToast('✦ Entry saved');
+  } catch(e) { showToast('Error: '+e.message); btn.disabled=false; btn.textContent='Try again'; }
+}
+
+// ── Render all UI ─────────────────────────────────────
+function refreshAll() {
+  renderCalendar();
+  renderStats();
+  renderEntryList('entry-list-log', entries.slice(0,6));
+  renderEntryList('entry-list-history', entries);
+  renderWeekSummary();
+  updateStreak();
+  if (document.getElementById('page-dashboard').classList.contains('active')) renderCharts();
+}
+
+// ── Emoji ──────────────────────────────────────────────
+function renderEmojiGrid() {
+  document.getElementById('emoji-grid').innerHTML = MOODS.map((m,i)=>`
+    <button class="emoji-btn" onclick="selectMood(${i})">
+      ${m.emoji}<span class="mood-label">${m.label}</span>
+    </button>`).join('');
+}
+function selectMood(i) {
+  selectedMood = MOODS[i];
+  document.querySelectorAll('.emoji-btn').forEach((b,j)=>b.classList.toggle('selected',i===j));
+  const btn=document.getElementById('save-btn');
+  btn.disabled=false; btn.textContent=`Save — ${selectedMood.label} ${selectedMood.emoji}`;
+}
+function renderTagsRow() {
+  document.getElementById('tags-row').innerHTML = TAGS.map(t=>`<button class="tag-btn" onclick="toggleTag('${t}')">${t}</button>`).join('');
+}
+function toggleTag(tag) {
+  selectedTags = selectedTags.includes(tag)?selectedTags.filter(t=>t!==tag):[...selectedTags,tag];
+  document.querySelectorAll('.tag-btn').forEach(b=>b.classList.toggle('selected',selectedTags.includes(b.textContent)));
+}
+
+// ── Calendar ───────────────────────────────────────────
+function renderCalendar() {
+  const now=new Date(), y=now.getFullYear(), m=now.getMonth();
+  const firstDay=new Date(y,m,1).getDay(), days=new Date(y,m+1,0).getDate();
+  const lookup={};
+  entries.forEach(e=>{ const d=new Date(e.date); if(d.getFullYear()===y&&d.getMonth()===m) lookup[d.getDate()]=e.mood.emoji; });
+  const names=['Su','Mo','Tu','We','Th','Fr','Sa'];
+  let html=names.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  for(let i=0;i<firstDay;i++) html+=`<div class="cal-day empty"></div>`;
+  for(let d=1;d<=days;d++) {
+    const emoji=lookup[d], isToday=d===now.getDate();
+    html+=`<div class="cal-day ${isToday?'today':''} ${emoji?'has-entry':''}">${emoji||d}</div>`;
+  }
+  document.getElementById('calendar').innerHTML=html;
+}
+
+// ── Stats ──────────────────────────────────────────────
+function renderStats() {
+  const now=new Date();
+  const thisMonth=entries.filter(e=>{const d=new Date(e.date);return d.getMonth()===now.getMonth()&&d.getFullYear()===now.getFullYear();});
+  document.getElementById('stat-total').textContent=thisMonth.length;
+  if(!thisMonth.length){document.getElementById('stat-top-mood').textContent='—';document.getElementById('stat-top-label').textContent='none yet';document.getElementById('mood-bars').innerHTML='';return;}
+  const freq={};
+  thisMonth.forEach(e=>{freq[e.mood.emoji]=(freq[e.mood.emoji]||0)+1;});
+  const sorted=Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+  const topMood=MOODS.find(m=>m.emoji===sorted[0][0]);
+  document.getElementById('stat-top-mood').textContent=sorted[0][0];
+  document.getElementById('stat-top-label').textContent=topMood?.label||'';
+  const barColors=['#E8B86D','#A78BFA','#6DCFCE','#E87D8B','#93C5FD'];
+  const max=sorted[0][1];
+  document.getElementById('mood-bars').innerHTML=sorted.slice(0,4).map(([emoji,count],i)=>`
+    <div class="mood-bar-row">
+      <span class="mood-bar-label">${emoji}</span>
+      <div class="mood-bar-track"><div class="mood-bar-fill" style="width:${(count/max)*100}%;background:${barColors[i%5]}"></div></div>
+      <span class="mood-bar-count">${count}</span>
+    </div>`).join('');
+}
+
+// ── Entry list ──────────────────────────────────────────
+function renderEntryList(elId, list) {
+  const el=document.getElementById(elId);
+  if(!list.length){el.innerHTML='<div class="empty-state"><span class="empty-icon">🌱</span>No entries yet.</div>';return;}
+  el.innerHTML=list.map(e=>{
+    const d=new Date(e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    return `<div class="entry-item">
+      <div class="entry-emoji">${e.mood.emoji}</div>
+      <div class="entry-meta">
+        <div class="entry-date">${d}</div>
+        <div class="entry-mood-name">${e.mood.label}</div>
+        <div class="entry-note">${e.note||'<em style="color:var(--text-faint)">No note</em>'}</div>
+        ${e.tags?.length?`<div class="entry-tags">${e.tags.map(t=>`<span class="entry-tag">${t}</span>`).join('')}</div>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Week summary (AI page) ─────────────────────────────
+function renderWeekSummary() {
+  const week=new Date(); week.setDate(week.getDate()-7);
+  const recent=entries.filter(e=>new Date(e.date)>=week);
+  renderEntryList('week-summary-list', recent);
+}
+
+// ── Streak ─────────────────────────────────────────────
+function updateStreak() {
+  const dates=new Set(entries.map(e=>new Date(e.date).toDateString()));
+  let streak=0,d=new Date();
+  while(dates.has(d.toDateString())){streak++;d.setDate(d.getDate()-1);}
+  document.getElementById('streak-num').textContent=streak||0;
+}
+
+// ── CHARTS (Dashboard) ─────────────────────────────────
+function renderCharts() {
+  renderLineChart();
+  renderDoughnutChart();
+  renderBarChart();
+}
+
+function chartDefaults() {
+  return {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{ labels:{ color:'#8B87A8', font:{family:'Cabinet Grotesk',size:11}, boxWidth:10 } } },
+  };
+}
+
+function renderLineChart() {
+  // Last 14 days, avg mood score per day
+  const days=14, labels=[], data=[];
+  for(let i=days-1;i>=0;i--) {
+    const d=new Date(); d.setDate(d.getDate()-i);
+    const label=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dayEntries=entries.filter(e=>{const ed=new Date(e.date);return ed.toDateString()===d.toDateString();});
+    labels.push(label);
+    data.push(dayEntries.length ? +(dayEntries.reduce((s,e)=>s+e.mood.score,0)/dayEntries.length).toFixed(1) : null);
+  }
+  if(charts.line) charts.line.destroy();
+  const ctx=document.getElementById('chart-line').getContext('2d');
+  const grad=ctx.createLinearGradient(0,0,0,240);
+  grad.addColorStop(0,'rgba(232,184,109,0.3)');
+  grad.addColorStop(1,'rgba(232,184,109,0.0)');
+  charts.line=new Chart(ctx,{
+    type:'line',
+    data:{labels, datasets:[{
+      label:'Avg mood', data,
+      borderColor:'#E8B86D', backgroundColor:grad,
+      tension:.4, fill:true, pointBackgroundColor:'#E8B86D',
+      pointRadius:4, pointHoverRadius:7, spanGaps:true,
+    }]},
+    options:{...chartDefaults(),
+      scales:{
+        x:{ticks:{color:'#4A4768',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{min:1,max:5,ticks:{color:'#4A4768',font:{size:10},stepSize:1,callback:v=>['','😢','😔','😐','🙂','😄'][v]||v},grid:{color:'rgba(255,255,255,0.04)'}},
+      },
+      plugins:{...chartDefaults().plugins, tooltip:{callbacks:{label:c=>`Score: ${c.raw}/5`}}},
+    },
+  });
+}
+
+function renderDoughnutChart() {
+  const freq={};
+  entries.forEach(e=>{freq[e.mood.label]=(freq[e.mood.label]||0)+1;});
+  const labels=Object.keys(freq), data=Object.values(freq);
+  const colorMap={Amazing:'#6DCFCE',Good:'#A3E4A0',Okay:'#E8B86D',Low:'#A78BFA',Sad:'#818CF8',Angry:'#E87D8B',Anxious:'#FCA5A5',Tired:'#93C5FD',Excited:'#FCD34D',Loved:'#F9A8D4'};
+  if(charts.doughnut) charts.doughnut.destroy();
+  charts.doughnut=new Chart(document.getElementById('chart-doughnut'),{
+    type:'doughnut',
+    data:{labels, datasets:[{data, backgroundColor:labels.map(l=>colorMap[l]||'#8B87A8'), borderWidth:0, hoverOffset:6}]},
+    options:{...chartDefaults(), cutout:'68%', plugins:{...chartDefaults().plugins}},
+  });
+}
+
+function renderBarChart() {
+  const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const counts=Array(7).fill(0);
+  entries.forEach(e=>counts[new Date(e.date).getDay()]++);
+  if(charts.bar) charts.bar.destroy();
+  charts.bar=new Chart(document.getElementById('chart-bar'),{
+    type:'bar',
+    data:{
+      labels:dayNames,
+      datasets:[{label:'Entries', data:counts,
+        backgroundColor:['rgba(232,184,109,0.25)','rgba(167,139,250,0.25)','rgba(109,207,206,0.25)','rgba(232,125,139,0.25)','rgba(163,228,160,0.25)','rgba(249,168,212,0.25)','rgba(147,197,253,0.25)'],
+        borderColor:    ['#E8B86D','#A78BFA','#6DCFCE','#E87D8B','#A3E4A0','#F9A8D4','#93C5FD'],
+        borderWidth:1.5, borderRadius:6,
+      }],
+    },
+    options:{...chartDefaults(),
+      scales:{
+        x:{ticks:{color:'#4A4768',font:{size:11}},grid:{display:false}},
+        y:{ticks:{color:'#4A4768',font:{size:10},stepSize:1},grid:{color:'rgba(255,255,255,0.04)'}},
+      },
+    },
+  });
+}
+
+// ── AI Reflection ──────────────────────────────────────
+function saveApiKey() {} // not needed with Ollama
+
+async function generateReflection() {
+  const apiKey=localStorage.getItem('moodly_gemini_key');
+  if(!apiKey){showToast('Save your API key first ↑');return;}
+
+  const btn=document.getElementById('generate-btn');
+  const box=document.getElementById('reflection-box');
+  btn.disabled=true; btn.textContent='Generating…';
+  box.className='reflection-box loading';
+  box.innerHTML='<span>Claude is reading your week… ✦</span>';
+  document.getElementById('insight-chips').innerHTML='';
+
+  try {
+    // Pass the key via a custom header so it stays client-side
+    const res=await fetch(`${API}/api/ai/reflection`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key-override':apiKey},
+      body:'{}',
+    });
+    const data=await res.json();
+    if(!data.success) throw new Error(data.error);
+
+    box.className='reflection-box';
+    // Typewriter effect
+    box.innerHTML='';
+    let i=0;
+    const text=data.reflection;
+    const timer=setInterval(()=>{
+      box.innerHTML=text.slice(0,++i).replace(/\n/g,'<br>');
+      if(i>=text.length){clearInterval(timer); renderInsightChips(data.entryCount);}
+    },18);
+  } catch(e) {
+    box.className='reflection-box';
+    box.innerHTML=`<em style="color:var(--rose)">Error: ${e.message}</em>`;
+    showToast('Could not generate reflection');
+  } finally {
+    btn.disabled=false; btn.textContent='✦ Generate again';
+  }
+}
+
+function renderInsightChips(count) {
+  const week=new Date(); week.setDate(week.getDate()-7);
+  const recent=entries.filter(e=>new Date(e.date)>=week);
+  if(!recent.length) return;
+  const avg=(recent.reduce((s,e)=>s+e.mood.score,0)/recent.length).toFixed(1);
+  const best=recent.reduce((a,b)=>a.mood.score>b.mood.score?a:b);
+  document.getElementById('insight-chips').innerHTML=`
+    <span class="insight-chip chip-teal">${count} entries this week</span>
+    <span class="insight-chip chip-gold">Avg mood: ${avg}/5</span>
+    <span class="insight-chip chip-rose">Best day: ${best.mood.emoji} ${best.mood.label}</span>
+  `;
+}
+
+// ── Navigation ─────────────────────────────────────────
+function gotoPage(name, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+  if(name==='dashboard') setTimeout(renderCharts,50);
+  if(name==='ai') {
+    renderWeekSummary();
+    // Ollama needs no key — just render the week summary
+  }
+}
+
+// ── Stars ──────────────────────────────────────────────
+function spawnStars() {
+  const c=document.getElementById('stars');
+  for(let i=0;i<55;i++){
+    const s=document.createElement('div');
+    s.className='star';
+    s.style.cssText=`left:${Math.random()*100}%;top:${Math.random()*100}%;--dur:${2+Math.random()*4}s;--delay:${Math.random()*5}s;opacity:${Math.random()*.4};`;
+    c.appendChild(s);
+  }
+}
+
+// ── Toast ──────────────────────────────────────────────
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── Update server to forward API key ──────────────────
+// Override generateReflection to send key in request body instead
+// (since the server reads it from req.body or env)
+const _gen = generateReflection;
+generateReflection = async function() {
+  const btn   = document.getElementById('generate-btn');
+  const box   = document.getElementById('reflection-box');
+  const model = document.getElementById('model-select')?.value || 'llama3.2';
+  btn.disabled = true; btn.textContent = 'Thinking…';
+  box.className = 'reflection-box loading';
+  box.innerHTML = `<span>Running ${model} locally… ✦</span>`;
+  document.getElementById('insight-chips').innerHTML = '';
+  document.getElementById('ai-setup').style.display = 'none';
+
+  try {
+    const res = await fetch(`${API}/api/ai/reflection`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ model }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      // Show setup instructions if Ollama not running
+      if (data.error?.includes('not running') || data.error?.includes('ECONNREFUSED')) {
+        document.getElementById('ai-setup').style.display = 'block';
+      }
+      throw new Error(data.error);
+    }
+
+    box.className = 'reflection-box';
+    box.innerHTML = '';
+    let i = 0;
+    const text = data.reflection;
+    const timer = setInterval(() => {
+      box.innerHTML = text.slice(0, ++i).replace(/\n/g, '<br>');
+      if (i >= text.length) { clearInterval(timer); renderInsightChips(data.entryCount); }
+    }, 18);
+  } catch(e) {
+    box.className = 'reflection-box';
+    box.innerHTML = `<em style="color:var(--rose)">${e.message}</em>`;
+  } finally {
+    btn.disabled = false; btn.textContent = '✦ Generate reflection';
+  }
+};
+
+
+// ── SETTINGS ──────────────────────────────────────────
+function initSettings() {
+  const p = JSON.parse(localStorage.getItem('moodly_profile') || '{}');
+  const prefs = JSON.parse(localStorage.getItem('moodly_prefs') || '{}');
+
+  // Fill form
+  document.getElementById('s-firstname').value  = p.firstname  || '';
+  document.getElementById('s-lastname').value   = p.lastname   || '';
+  document.getElementById('s-username').value   = p.username   || '';
+  document.getElementById('s-bio').value        = p.bio        || '';
+  document.getElementById('s-location').value   = p.location   || '';
+
+  // Load photo
+  if (p.photo) {
+    document.getElementById('avatar-img').src = p.photo;
+    document.getElementById('avatar-img').style.display = 'block';
+    document.getElementById('avatar-initials').style.display = 'none';
+    // Also update sidebar if you add one
+  }
+
+  // Prefs toggles
+  if (prefs.reminder !== undefined) document.getElementById('pref-reminder').checked = prefs.reminder;
+  if (prefs.weekly   !== undefined) document.getElementById('pref-weekly').checked   = prefs.weekly;
+  if (prefs.scores   !== undefined) document.getElementById('pref-scores').checked   = prefs.scores;
+  if (prefs.compact  !== undefined) document.getElementById('pref-compact').checked  = prefs.compact;
+
+  liveUpdateProfile();
+  updateProfileStats();
+}
+
+function liveUpdateProfile() {
+  const first = document.getElementById('s-firstname').value.trim();
+  const last  = document.getElementById('s-lastname').value.trim();
+  const user  = document.getElementById('s-username').value.trim();
+  const full  = [first, last].filter(Boolean).join(' ') || 'Your Name';
+  const initials = [(first[0]||''), (last[0]||'')].filter(Boolean).join('').toUpperCase() || '?';
+
+  document.getElementById('profile-display-name').textContent = full;
+  document.getElementById('profile-handle').textContent = (user ? '@'+user : '@handle') + ' · Moodly member';
+  document.getElementById('avatar-initials').textContent = initials;
+
+  // Update greeting in header too
+  const tod2 = getTimeOfDay();
+  if (first) {
+    document.querySelector('.greeting').innerHTML = `Good <em>${tod2}</em>, <em>${first}</em> ✦`;
+  } else {
+    document.querySelector('.greeting').innerHTML = `Good <em>${tod2}</em>, friend ✦`;
+  }
+}
+
+function saveProfile() {
+  const profile = {
+    firstname: document.getElementById('s-firstname').value.trim(),
+    lastname:  document.getElementById('s-lastname').value.trim(),
+    username:  document.getElementById('s-username').value.trim(),
+    bio:       document.getElementById('s-bio').value.trim(),
+    location:  document.getElementById('s-location').value.trim(),
+    photo:     localStorage.getItem('moodly_photo') || '',
+  };
+  localStorage.setItem('moodly_profile', JSON.stringify(profile));
+  liveUpdateProfile();
+  updateSidebarAvatar();
+  showToast('✦ Profile saved');
+}
+
+function savePrefs() {
+  const prefs = {
+    reminder: document.getElementById('pref-reminder').checked,
+    weekly:   document.getElementById('pref-weekly').checked,
+    scores:   document.getElementById('pref-scores').checked,
+    compact:  document.getElementById('pref-compact').checked,
+  };
+  localStorage.setItem('moodly_prefs', JSON.stringify(prefs));
+  showToast('Preferences saved ✦');
+}
+
+function handlePhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 3 * 1024 * 1024) { showToast('Photo too large — max 3MB'); return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    localStorage.setItem('moodly_photo', dataUrl);
+    document.getElementById('avatar-img').src = dataUrl;
+    document.getElementById('avatar-img').style.display = 'block';
+    document.getElementById('avatar-initials').style.display = 'none';
+    updateSidebarAvatar(dataUrl);
+    showToast('✦ Photo updated!');
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateSidebarAvatar(photoUrl) {
+  const url = photoUrl || localStorage.getItem('moodly_photo');
+  const sideEl = document.getElementById('sidebar-avatar');
+  if (!sideEl) return;
+  if (url) {
+    sideEl.style.backgroundImage = `url(${url})`;
+    sideEl.textContent = '';
+  }
+  // Also refresh sidebar name/sub
+  const p = JSON.parse(localStorage.getItem('moodly_profile') || '{}');
+  const full = [p.firstname||'', p.lastname||''].filter(Boolean).join(' ');
+  if (full) {
+    document.getElementById('sidebar-name').textContent = full;
+    document.getElementById('sidebar-sub').textContent  = p.username ? '@'+p.username : 'your journal';
+  }
+}
+
+function updateProfileStats() {
+  document.getElementById('ps-total').textContent  = entries.length;
+  const dates = new Set(entries.map(e => new Date(e.date).toDateString()));
+  let streak = 0, d = new Date();
+  while (dates.has(d.toDateString())) { streak++; d.setDate(d.getDate()-1); }
+  document.getElementById('ps-streak').textContent = streak || 0;
+  if (entries.length) {
+    const oldest = new Date(entries[entries.length-1].date);
+    document.getElementById('ps-since').textContent = oldest.toLocaleDateString('en-US',{month:'short',year:'numeric'});
+  }
+}
+
+function exportCSV() {
+  if (!entries.length) { showToast('No entries to export'); return; }
+  const header = 'Date,Mood,Score,Tags,Note';
+  const rows = entries.map(e => {
+    const d    = new Date(e.date).toLocaleDateString('en-US');
+    const note = (e.note||'').replace(/"/g,'""');
+    const tags = (e.tags||[]).join(';');
+    return `"${d}","${e.mood.emoji} ${e.mood.label}",${e.mood.score},"${tags}","${note}"`;
+  });
+  const csv  = [header, ...rows].join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `moodly-export-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('✦ Exported '+entries.length+' entries');
+}
+
+function confirmClearData() {
+  const overlay = document.createElement('div');
+  overlay.className = 'confirm-overlay';
+  overlay.innerHTML = `
+    <div class="confirm-box">
+      <div class="confirm-title">Clear all data?</div>
+      <div class="confirm-sub">This will permanently delete all your journal entries. Your profile settings will be kept. This cannot be undone.</div>
+      <div class="confirm-btns">
+        <button class="confirm-cancel" onclick="this.closest('.confirm-overlay').remove()">Cancel</button>
+        <button class="confirm-delete" onclick="clearAllData()">Yes, delete all</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function clearAllData() {
+  document.querySelector('.confirm-overlay')?.remove();
+  try {
+    // Delete all entries from server
+    for (const e of entries) {
+      await fetch(`/api/entries/${e.id}`, {method:'DELETE'});
+    }
+  } catch(_) {}
+  entries = [];
+  refreshAll();
+  showToast('All entries cleared');
+}
+
+// ── THEME ──────────────────────────────────────────────
+function toggleTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  setTheme(isLight ? 'dark' : 'light');
+}
+
+function toggleThemeFromSettings() {
+  const isLight = document.getElementById('pref-lightmode').checked;
+  setTheme(isLight ? 'light' : 'dark');
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('moodly_theme', theme);
+  const icon = document.getElementById('theme-icon');
+  if (icon) icon.textContent = theme === 'light' ? '🌙' : '☀️';
+  // Sync the settings toggle
+  const settingsToggle = document.getElementById('pref-lightmode');
+  if (settingsToggle) settingsToggle.checked = theme === 'light';
+  // Re-render charts with correct colors if on dashboard
+  if (document.getElementById('page-dashboard').classList.contains('active')) {
+    setTimeout(renderCharts, 50);
+  }
+}
+
+function loadTheme() {
+  const saved = localStorage.getItem('moodly_theme') || 'dark';
+  setTheme(saved);
+}
+
+
+init();
+</script>
+</body>
+</html>
