@@ -5,27 +5,40 @@ function uuid() {
   });
 }
 
+const BASE = () => process.env.KV_REST_API_URL;
+const TOKEN = () => process.env.KV_REST_API_TOKEN;
+const KEY = 'moodly_entries';
+
 async function kvGet() {
   try {
-    const res  = await fetch(`${process.env.KV_REST_API_URL}/get/moodly_entries`, {
-      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+    const res  = await fetch(`${BASE()}/get/${KEY}`, {
+      headers: { Authorization: `Bearer ${TOKEN()}` },
     });
     const data = await res.json();
     if (!data.result) return [];
-    const parsed = JSON.parse(data.result);
+    // Handle both single and double stringified data
+    let parsed = data.result;
+    if (typeof parsed === 'string') parsed = JSON.parse(parsed);
+    if (typeof parsed === 'string') parsed = JSON.parse(parsed);
     return Array.isArray(parsed) ? parsed : [];
-  } catch { return []; }
+  } catch(e) {
+    console.error('kvGet error:', e.message);
+    return [];
+  }
 }
 
 async function kvSet(entries) {
-  await fetch(`${process.env.KV_REST_API_URL}/set/moodly_entries`, {
+  // Use Upstash REST API SET command with proper encoding
+  const res = await fetch(`${BASE()}/set/${KEY}`, {
     method: 'POST',
     headers: {
-      Authorization:  `Bearer ${process.env.KV_REST_API_TOKEN}`,
+      Authorization:  `Bearer ${TOKEN()}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(JSON.stringify(entries)),
   });
+  const data = await res.json();
+  console.log('kvSet result:', data);
 }
 
 async function getAll() {
